@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "target": "ES6",
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/api/admin/doctors/route.js", "app/api/appointments/route.js", "app/api/dashboard/admin/route.js", "app/api/dashboard/appointments/[id]/route.js", "app/api/doctors/route.js", "app/api/doctors/top/route.js", "app/api/doctors/[id]/route.js", "app/api/auth/login/route.js", "app/api/register/route.js", "app/api/migrate/route.js"],
+  "exclude": ["node_modules"]
+}
