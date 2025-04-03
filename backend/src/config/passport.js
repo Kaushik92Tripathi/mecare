@@ -27,11 +27,11 @@ passport.use(new LocalStrategy({
       return done(null, false, { message: 'Incorrect email.' });
     }
 
-    // const isValidPassword = await bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, user.password);
 
-    // if (!isValidPassword) {
-    //   return done(null, false, { message: 'Incorrect password.' });
-    // }
+    if (!isValidPassword) {
+      return done(null, false, { message: 'Incorrect password.' });
+    }
 
     return done(null, user);
   } catch (error) {
@@ -50,13 +50,6 @@ passport.use(new GoogleStrategy({
     console.log('Google Auth Environment:', process.env.NODE_ENV);
     console.log('Callback URL:', `${process.env.BACKEND_URL}/api/auth/google/callback`);
     
-    const user = {
-      name: profile.displayName,
-      email: profile.emails[0].value,
-      profileImage: profile.photos[0].value,
-      googleId: profile.id,
-      token: accessToken,
-    };
     // Check if user exists
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
@@ -67,19 +60,31 @@ passport.use(new GoogleStrategy({
       return done(null, result.rows[0]);
     }
 
-    // Create new user if doesn't exist
-    const newUser = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
-      [profile.displayName, profile.emails[0].value, '', 'patient']
-    );
+    // Start a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Create user profile
-    await pool.query(
-      'INSERT INTO user_profiles (user_id) VALUES ($1)',
-      [newUser.rows[0].id]
-    );
+      // Create new user
+      const newUser = await client.query(
+        'INSERT INTO users (name, email, password, role, auth_provider, auth_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [profile.displayName, profile.emails[0].value, '', 'patient', 'google', profile.id]
+      );
 
-    return done(null, user);
+      // Create user profile with profile picture
+      await client.query(
+        'INSERT INTO user_profiles (user_id, profile_picture) VALUES ($1, $2)',
+        [newUser.rows[0].id, profile.photos[0].value]
+      );
+
+      await client.query('COMMIT');
+      return done(null, newUser.rows[0]);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     return done(error);
   }

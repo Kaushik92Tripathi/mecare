@@ -2,13 +2,18 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, User } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 export default function AdminNavbar() {
   const router = useRouter()
+  const { logout } = useAuth()
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    router.push('/login')
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   }
 
   return (

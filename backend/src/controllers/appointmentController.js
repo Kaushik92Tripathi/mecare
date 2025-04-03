@@ -141,8 +141,21 @@ const appointmentController = {
         patientGender
       } = req.body;
 
+      // Validate required fields
+      if (!doctorId || !date || !timeSlotId || !appointmentType || !patientAge || !patientGender) {
+        return res.status(400).json({ error: 'All required fields must be provided' });
+      }
+
       // Convert date to a JavaScript Date object
       const dateObj = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Validate date is not in past
+      if (dateObj < today) {
+        return res.status(400).json({ error: 'Appointment date cannot be in the past' });
+      }
+
       const formattedDate = dateObj.toISOString().split('T')[0]; // Get YYYY-MM-DD format
       const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
 
@@ -193,7 +206,7 @@ const appointmentController = {
         RETURNING *
       `;
       const insertResult = await pool.query(insertQuery, [
-        req.user.id, // Assuming user ID is available from auth middleware
+        req.user.id, // user ID is available from auth middleware
         doctorId,
         formattedDate,
         timeSlotId,

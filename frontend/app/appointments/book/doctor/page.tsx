@@ -23,14 +23,6 @@ import {
   DoctorDetails
 } from "@/lib/api";
 
-// Add this function before the BookAppointment component
-function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
-}
 
 export default function BookAppointment() {
   const router = useRouter();
@@ -56,7 +48,6 @@ export default function BookAppointment() {
     timeSlot?: string;
   }>({});
 
-  // Define all possible time slots in 12-hour format to match backend
   const allMorningSlots = [
     { time: "9:00 AM" },
     { time: "9:30 AM" },

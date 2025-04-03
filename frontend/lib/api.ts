@@ -6,43 +6,26 @@ console.log('Current Environment:', process.env.NODE_ENV);
 console.log('API URL:', config.apiUrl);
 
 const api = axios.create({
-  baseURL: `${config.apiUrl}/api`,  // config.apiUrl already includes /api
+  baseURL: `${config.apiUrl}/api`,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
   withCredentials: true
 });
 
-// Add request interceptor to add auth token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Add response interceptor to handle errors
-api.interceptors.response.use(
-  (response) => response,
+// Add request interceptor to handle credentials
+api.interceptors.request.use(
+  (config) => {
+    // Ensure credentials are always sent
+    config.withCredentials = true;
+    return config;
+  },
   (error) => {
-    if (error.response) {
-      console.error(`API Error (${config.env}):`, {
-        data: error.response.data,
-        status: error.response.status,
-        url: error.config.url
-      });
-    } else if (error.request) {
-      console.error(`Request Error (${config.env}):`, {
-        request: error.request,
-        message: error.message
-      });
-    } else {
-      console.error(`Error (${config.env}):`, error.message);
-    }
     return Promise.reject(error);
   }
 );
+
 
 interface DoctorsResponse {
   doctors: Doctor[];
@@ -54,20 +37,10 @@ interface DoctorsResponse {
 
 export async function getTopDoctors(): Promise<Doctor[]> {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
     const response = await api.get('/doctors/top');
     return response.data.doctors;
   } catch (error: any) {
     console.error("Error fetching top doctors:", error.message);
-    if (error.response?.status === 401) {
-      // Handle unauthorized error (token expired or invalid)
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
     throw error;
   }
 }
@@ -95,7 +68,6 @@ export async function getDoctorById(id: string | number): Promise<{ doctor: Doct
       throw new Error('Doctor ID is required');
     }
 
-    // Convert id to number if it's a string
     const doctorId = typeof id === 'string' ? parseInt(id, 10) : id;
     
     if (isNaN(doctorId)) {

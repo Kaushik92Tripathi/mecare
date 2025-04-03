@@ -35,71 +35,89 @@ router.post('/register', async (req, res) => {
       [result.rows[0].id]
     );
 
-    res.status(201).json(result.rows[0]);
+    // Log the user in
+    req.login(result.rows[0], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Login failed after registration' });
+      }
+      res.status(201).json({
+        user: result.rows[0]
+      });
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
 
-router.post('/login', passport.authenticate('local', { session: false }), (req, res) => {
-  try {
-    const user = {
+router.post('/login', passport.authenticate('local'), (req, res) => {
+  res.json({
+    user: {
       id: req.user.id,
       name: req.user.name,
       email: req.user.email,
       role: req.user.role,
       profile_picture: req.user.profile_picture
-    };
-
-    const token = jwt.sign(
-      user,
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      token,
-      user
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
-  }
+    }
+  });
 });
 
 // Google Strategy Routes
 router.get('/google', passport.authenticate('google', {
-  scope: ['profile', 'email']
+  scope: ['profile', 'email', 'https://www.googleapis.com/auth/userinfo.profile']
 }));
 
-router.get('/google/callback', passport.authenticate('google', {
-  failureRedirect: '/login',
-  session: false
-}), async (req, res) => {
-  try {
-    const user = {
-      id: req.user.id,
-      name: req.user.name,
-      email: req.user.email,
-      role: req.user.role,
-      profile_picture: req.user.profile_picture
-    };
-
-    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "24h" });
-
-    // Redirect to frontend with token
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`);
-  } catch (error) {
-    console.error('Google auth error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=Authentication failed`);
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL}/auth/error`,
+    failureMessage: true
+  }), 
+  (req, res) => {
+    // Successful authentication
+    console.log('Google auth successful, redirecting to frontend callback');
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
   }
-});
+);
 
 // Logout route
 router.post('/logout', (req, res) => {
-  req.logout();
-  res.json({ message: 'Logged out successfully' });
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error logging out' });
+    }
+    res.json({ message: 'Logged out successfully' });
+  });
+});
+
+// Get current user
+router.get('/me', async (req, res) => {
+  if (req.isAuthenticated()) {
+    try {
+      const result = await pool.query(
+        `SELECT u.*, up.profile_picture 
+         FROM users u 
+         LEFT JOIN user_profiles up ON u.id = up.user_id 
+         WHERE u.id = $1`,
+        [req.user.id]
+      );
+      
+      const user = result.rows[0];
+      res.json({
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          profile_picture: user.profile_picture
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ error: 'Error fetching user data' });
+    }
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
 });
 
 module.exports = router; 

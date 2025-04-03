@@ -1,7 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import api from '@/lib/api';
 
 interface User {
   id?: string;
@@ -15,31 +16,42 @@ interface AuthContextType {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   isLoading: boolean;
-  logout: () => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const PUBLIC_PATHS = ['/login', '/register', '/auth/callback'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+
+  const checkAuth = useCallback(async (): Promise<User | null> => {
+    try {
+      const response = await api.get('/auth/me');
+      const userData = response.data.user;
+      setUser(userData);
+      return userData;
+    } catch (error) {
+      console.error('Error checking auth:', error);
+      setUser(null);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const userStr = localStorage.getItem('user');
-
-        if (token && userStr) {
-          const userData = JSON.parse(userStr);
-          setUser(userData);
+        // Only check auth if we're not on a public path
+        if (!PUBLIC_PATHS.some(path => pathname?.startsWith(path))) {
+          await checkAuth();
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // Clear potentially corrupted data
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -47,22 +59,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initializeAuth();
-  }, []);
+  }, [pathname, checkAuth]);
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+      setUser(null);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
-  // Don't render children until initial auth check is complete
-  if (isLoading) {
-    return null; 
+  // Don't show loading spinner on public paths
+  if (isLoading && !PUBLIC_PATHS.some(path => pathname?.startsWith(path))) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, isLoading, logout }}>
+    <AuthContext.Provider value={{ user, setUser, isLoading, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );

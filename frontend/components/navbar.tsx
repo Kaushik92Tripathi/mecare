@@ -40,6 +40,16 @@ export default function Navbar() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMenuOpen(false);
+      setIsMobileMenuOpen(false);
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   return (
     <header className="border-b">
       <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
@@ -135,10 +145,7 @@ export default function Navbar() {
                     </Link>
                   )}
                   <button
-                    onClick={() => {
-                      logout();
-                      setIsMenuOpen(false);
-                    }}
+                    onClick={handleLogout}
                     className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                   >
                     Logout
@@ -217,10 +224,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 <button
-                  onClick={() => {
-                    logout();
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={handleLogout}
                   className="block w-full text-left text-red-600 hover:text-red-700"
                 >
                   Logout

@@ -9,6 +9,7 @@ import { getAuthUrl } from '@/config';
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingSkeleton from "./loading";
+import { useAuth } from "@/context/AuthContext";
 
 const ALLOWED_DOMAINS = ['gmail.com', 'tothenew.com'];
 
@@ -20,6 +21,7 @@ interface ValidationErrors {
 }
 
 export default function Register() {
+  const { setUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -123,20 +125,18 @@ export default function Register() {
       const response = await fetch(getAuthUrl('register'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          password: formData.password,
-          role: "patient", // Default role is patient
+          password: formData.password
         }),
       });
       const data = await response.json();
       
       if (!response.ok) throw new Error(data.error || "Registration failed");
       
-      // Store the token in localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
       
       toast.success("Registration successful!");
       router.push("/appointments");
@@ -308,8 +308,6 @@ export default function Register() {
               />
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
                 className="absolute transform -translate-y-1/2 right-3 top-1/2"
                 onClick={() => setShowPassword(!showPassword)}
               >

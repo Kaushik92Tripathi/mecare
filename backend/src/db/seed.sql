@@ -183,7 +183,7 @@ WHERE
   END;
 
 -- Insert appointments (4x more)
-INSERT INTO appointments (doctor_id, patient_id, appointment_date, time_slot_id, status, appointment_type, patient_problem)
+INSERT INTO appointments (doctor_id, patient_id, appointment_date, time_slot_id, status, appointment_type, patient_problem, completed_at)
 SELECT 
   doctor_id,
   patient_id,
@@ -191,27 +191,32 @@ SELECT
   time_slot_id,
   status,
   appointment_type,
-  patient_problem
+  patient_problem,
+  CASE 
+    WHEN status = 'completed' THEN appointment_date + (i * INTERVAL '1 week') + INTERVAL '1 hour'
+    ELSE NULL
+  END
 FROM (
   VALUES
-    (1, 18, CURRENT_DATE + INTERVAL '1 day', 1, 'scheduled', 'video', 'Regular heart checkup'),
-    (2, 19, CURRENT_DATE + INTERVAL '2 days', 5, 'scheduled', 'offline', 'Skin rash examination'),
-    (3, 20, CURRENT_DATE + INTERVAL '3 days', 9, 'scheduled', 'video', 'Headache consultation'),
-    (4, 21, CURRENT_DATE + INTERVAL '4 days', 13, 'scheduled', 'offline', 'Child vaccination'),
-    (5, 22, CURRENT_DATE + INTERVAL '1 day', 2, 'scheduled', 'video', 'Joint pain'),
-    (6, 23, CURRENT_DATE + INTERVAL '2 days', 6, 'scheduled', 'offline', 'Vision check'),
-    (7, 24, CURRENT_DATE + INTERVAL '3 days', 10, 'scheduled', 'video', 'Ear infection'),
-    (8, 25, CURRENT_DATE + INTERVAL '4 days', 14, 'scheduled', 'offline', 'Regular checkup')
-) AS base_appointments(doctor_id, patient_id, appointment_date, time_slot_id, status, appointment_type, patient_problem),
+    (1, 18, CURRENT_DATE + INTERVAL '1 day', 1, 'scheduled', 'video', 'Regular heart checkup', NULL),
+    (2, 19, CURRENT_DATE + INTERVAL '2 days', 5, 'completed', 'offline', 'Skin rash examination', CURRENT_DATE + INTERVAL '2 days' + INTERVAL '1 hour'),
+    (3, 20, CURRENT_DATE + INTERVAL '3 days', 9, 'scheduled', 'video', 'Headache consultation', NULL),
+    (4, 21, CURRENT_DATE + INTERVAL '4 days', 13, 'completed', 'offline', 'Child vaccination', CURRENT_DATE + INTERVAL '4 days' + INTERVAL '1 hour'),
+    (5, 22, CURRENT_DATE + INTERVAL '1 day', 2, 'scheduled', 'video', 'Joint pain', NULL),
+    (6, 23, CURRENT_DATE + INTERVAL '2 days', 6, 'completed', 'offline', 'Vision check', CURRENT_DATE + INTERVAL '2 days' + INTERVAL '1 hour'),
+    (7, 24, CURRENT_DATE + INTERVAL '3 days', 10, 'scheduled', 'video', 'Ear infection', NULL),
+    (8, 25, CURRENT_DATE + INTERVAL '4 days', 14, 'completed', 'offline', 'Regular checkup', CURRENT_DATE + INTERVAL '4 days' + INTERVAL '1 hour')
+) AS base_appointments(doctor_id, patient_id, appointment_date, time_slot_id, status, appointment_type, patient_problem, completed_at),
 (SELECT generate_series(0,3) AS i) AS multiplier;
 
--- Insert reviews (4x more)
-INSERT INTO reviews (doctor_id, patient_id, rating, comment)
+-- Insert reviews (4x more) - only for completed appointments
+INSERT INTO reviews (doctor_id, patient_id, rating, comment, appointment_id)
 SELECT 
-  doctor_id,
-  patient_id + (i * 4),
-  rating,
-  comment || ' - Review ' || (i + 1)
+  base_reviews.doctor_id,
+  base_reviews.patient_id + (i * 4),
+  base_reviews.rating,
+  base_reviews.comment || ' - Review ' || (i + 1),
+  a.id
 FROM (
   VALUES
     (1, 18, 5, 'Excellent doctor, very professional and caring'),
@@ -222,8 +227,11 @@ FROM (
     (6, 23, 4, 'Professional eye care service'),
     (7, 24, 5, 'Very patient and thorough ENT specialist'),
     (8, 25, 4, 'Comprehensive general checkup')
-) AS base_reviews(doctor_id, patient_id, rating, comment),
-(SELECT generate_series(0,3) AS i) AS multiplier;
+) AS base_reviews(doctor_id, patient_id, rating, comment)
+CROSS JOIN (SELECT generate_series(0,3) AS i) AS multiplier
+JOIN appointments a ON a.doctor_id = base_reviews.doctor_id 
+  AND a.patient_id = base_reviews.patient_id + (i * 4)
+  AND a.status = 'completed';
 
 -- Update doctor ratings
 UPDATE doctors 

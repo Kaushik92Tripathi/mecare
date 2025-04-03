@@ -15,7 +15,6 @@ const adminAppointmentController = {
         sortOrder = 'desc'
       } = req.query;
 
-      // Build the base query
       let query = `
         SELECT 
           a.*,
@@ -49,7 +48,6 @@ const adminAppointmentController = {
       const params = [];
       let paramCount = 1;
 
-      // Add search condition
       if (search) {
         query += ` AND (
           u.name ILIKE $${paramCount} OR
@@ -60,28 +58,24 @@ const adminAppointmentController = {
         paramCount++;
       }
 
-      // Add status filter
       if (status && status !== 'all') {
         query += ` AND a.status = $${paramCount}`;
         params.push(status);
         paramCount++;
       }
 
-      // Add date filter
       if (date) {
         query += ` AND DATE(a.appointment_date) = $${paramCount}`;
         params.push(date);
         paramCount++;
       }
 
-      // Add doctor filter
       if (doctorId) {
         query += ` AND a.doctor_id = $${paramCount}`;
         params.push(doctorId);
         paramCount++;
       }
 
-      // Add sorting
       const validSortColumns = ['appointment_date', 'status', 'appointment_type'];
       const validSortOrders = ['asc', 'desc'];
       
@@ -90,20 +84,16 @@ const adminAppointmentController = {
       
       query += ` ORDER BY a.${finalSortBy} ${finalSortOrder}`;
 
-      // Add pagination
       const offset = (page - 1) * limit;
       query += ` LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
       params.push(limit, offset);
 
-      // Get total count
       const countQuery = query.replace(/SELECT .*? FROM/, 'SELECT COUNT(*) FROM').split('ORDER BY')[0];
       const countResult = await pool.query(countQuery, params.slice(0, -2));
       const total = parseInt(countResult.rows[0].count);
 
-      // Execute main query
       const result = await pool.query(query, params);
 
-      // Format the response
       const appointments = result.rows.map(row => ({
         id: row.id,
         patientId: row.patient_id,
@@ -161,7 +151,6 @@ const adminAppointmentController = {
     }
   },
 
-  // Update appointment status
   updateAppointmentStatus: async (req, res) => {
     try {
       const appointmentId = parseInt(req.params.id);

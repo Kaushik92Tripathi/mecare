@@ -1,7 +1,7 @@
 "use client"
 
 import AdminNavbar from "@/components/AdminNavbar"
-import AdminMiddleware from "@/components/middleware/AdminMiddleware"
+import AdminMiddleware from "@/app/middleware/AdminMiddleware"
 
 export default function AdminLayout({
   children,

@@ -53,7 +53,6 @@ export default function DoctorProfile() {
       const { doctor, availability } = await getDoctorById(id);
       console.log(doctor, availability)
       
-      // Transform the doctor data to match DoctorData interface
       const transformedDoctor: DoctorData = {
         id: doctor.id,
         user_id: doctor.userId,
@@ -79,15 +78,11 @@ export default function DoctorProfile() {
       setDoctorData(transformedDoctor);
       setAvailability(availability);
 
-      // Check if user can review
       try {
-        // Get completed appointments
         const { appointments } = await getDoctorAppointments(id, 'completed');
         
-        // Get existing reviews
         const { reviews } = await getDoctorReviews(id);
         
-        // User can review if they have completed appointments and haven't reviewed yet
         const hasCompletedAppointment = appointments.length > 0;
         const hasReviewed = reviews.some(review => review.patient.id === doctor.userId);
         

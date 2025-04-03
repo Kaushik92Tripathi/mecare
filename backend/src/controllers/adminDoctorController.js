@@ -2,7 +2,6 @@ const pool = require('../db');
 const bcrypt = require('bcrypt');
 
 const adminDoctorController = {
-  // Create a new doctor (admin only)
   createDoctor: async (req, res) => {
     try {
       const {
@@ -17,12 +16,10 @@ const adminDoctorController = {
         consultation_fee,
       } = req.body;
 
-      // Validate required fields
       if (!name || !email || !password || !specialty_id || !degree || !experience_years) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Check if email already exists
       const existingUserQuery = `
         SELECT id FROM users WHERE email = $1
       `;
@@ -32,15 +29,12 @@ const adminDoctorController = {
         return res.status(400).json({ error: "Email already registered" });
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Start a transaction
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Create user first
         const createUserQuery = `
           INSERT INTO users (name, email, password, role)
           VALUES ($1, $2, $3, $4)
@@ -54,7 +48,6 @@ const adminDoctorController = {
         ]);
         const userId = userResult.rows[0].id;
 
-        // Create doctor profile
         const createDoctorQuery = `
           INSERT INTO doctors (
             user_id, specialty_id, degree, experience_years,
@@ -78,12 +71,10 @@ const adminDoctorController = {
         ]);
         const doctorId = doctorResult.rows[0].id;
 
-        // Get all available time slots
         const timeSlotsQuery = 'SELECT id FROM time_slots';
         const timeSlotsResult = await client.query(timeSlotsQuery);
         const timeSlots = timeSlotsResult.rows;
 
-        // Create default availability (Mon-Fri, 9AM-5PM)
         const availabilityValues = [];
         for (let day = 1; day <= 5; day++) {
           for (const slot of timeSlots) {
@@ -91,7 +82,6 @@ const adminDoctorController = {
           }
         }
 
-        // Insert availability records
         const createAvailabilityQuery = `
           INSERT INTO doctor_availability (doctor_id, day_of_week, time_slot_id, is_available)
           VALUES ${availabilityValues.join(', ')}
@@ -117,7 +107,6 @@ const adminDoctorController = {
     }
   },
 
-  // Update doctor details
   updateDoctor: async (req, res) => {
     try {
       const doctorId = parseInt(req.params.id);
@@ -132,12 +121,10 @@ const adminDoctorController = {
         consultation_fee,
       } = req.body;
 
-      // Start transaction
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Get doctor's user_id
         const getDoctorQuery = 'SELECT user_id FROM doctors WHERE id = $1';
         const doctorResult = await client.query(getDoctorQuery, [doctorId]);
 
@@ -147,7 +134,6 @@ const adminDoctorController = {
 
         const userId = doctorResult.rows[0].user_id;
 
-        // Update user details
         if (name || email) {
           const updateUserQuery = `
             UPDATE users
@@ -158,7 +144,6 @@ const adminDoctorController = {
           await client.query(updateUserQuery, [name, email, userId]);
         }
 
-        // Update doctor details
         const updateDoctorQuery = `
           UPDATE doctors
           SET specialty_id = COALESCE($1, specialty_id),
@@ -193,17 +178,14 @@ const adminDoctorController = {
     }
   },
 
-  // Delete doctor
   deleteDoctor: async (req, res) => {
     try {
       const doctorId = parseInt(req.params.id);
 
-      // Start transaction
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Get doctor's user_id
         const getDoctorQuery = 'SELECT user_id FROM doctors WHERE id = $1';
         const doctorResult = await client.query(getDoctorQuery, [doctorId]);
 
@@ -213,16 +195,12 @@ const adminDoctorController = {
 
         const userId = doctorResult.rows[0].user_id;
 
-        // Delete doctor's availability
         await client.query('DELETE FROM doctor_availability WHERE doctor_id = $1', [doctorId]);
 
-        // Delete doctor's appointments
         await client.query('DELETE FROM appointments WHERE doctor_id = $1', [doctorId]);
 
-        // Delete doctor record
         await client.query('DELETE FROM doctors WHERE id = $1', [doctorId]);
 
-        // Delete user record
         await client.query('DELETE FROM users WHERE id = $1', [userId]);
 
         await client.query('COMMIT');
@@ -239,7 +217,6 @@ const adminDoctorController = {
     }
   },
 
-  // Toggle doctor availability
   toggleDoctorAvailability: async (req, res) => {
     try {
       const doctorId = parseInt(req.params.id);

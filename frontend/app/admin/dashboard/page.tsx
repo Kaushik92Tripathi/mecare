@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
-import AdminMiddleware from "@/components/middleware/AdminMiddleware";
+import AdminMiddleware from "@/app/middleware/AdminMiddleware";
 import api, { searchAppointments, AppointmentSearchParams } from '@/lib/api';
 import { Metadata } from 'next';
 
@@ -143,7 +143,6 @@ function AdminDashboardContent() {
     completed: 0,
   });
 
-  console.log(doctors)
 
   // New state variables
   const [loading, setLoading] = useState(true);
@@ -261,7 +260,7 @@ function AdminDashboardContent() {
             await api.delete(`/admin/doctors/${doctorId}`);
             setDoctors(doctors.filter(d => d.id !== doctorId));
           }
-          break;
+          break;  
         case "toggle-availability":
           const doctor = doctors.find(d => d.id === doctorId);
           if (!doctor) return;

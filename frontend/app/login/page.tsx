@@ -73,10 +73,10 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
 
-      // Handle non-JSON responses first
       if (res.status === 401) {
         throw new Error('Email is not registered. Please sign up first.')
       }
@@ -92,10 +92,6 @@ export default function Login() {
         throw new Error(data.error || 'Invalid email or password')
       }
 
-      // Store the token in localStorage
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      
       // Update the user state in AuthContext
       setUser(data.user)
       
@@ -130,7 +126,6 @@ export default function Login() {
       animate={{ opacity: 1 }}
       className="relative flex items-center justify-center min-h-screen"
     >
-      {/* Background Image */}
       <Image
         src="/login.svg"
         alt="Login Background"
@@ -237,8 +232,6 @@ export default function Login() {
               />
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
                 className="absolute transform -translate-y-1/2 right-3 top-1/2"
                 onClick={() => setShowPassword(!showPassword)}
               >
